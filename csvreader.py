@@ -1,6 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv("your_data.csv")
+df = pd.read_csv("joined.csv")
 
 # keep athletes with at least 3 races
 race_counts = df.groupby("athlete_id").size()
