@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GroupShuffleSplit
+from xgboost import XGBRegressor
 
 from build_dataset import riegel_predict
 
@@ -23,31 +24,58 @@ X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
 y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 test_set = dataset.iloc[test_idx]
 
+
+def evaluate(name, pred):
+    mae = mean_absolute_error(y_test, pred)
+    rmse = np.sqrt(mean_squared_error(y_test, pred))
+    return name, mae, rmse
+
+
+results = []
+
 # --- Riegel baseline (no training needed, just formula) ---
 riegel_pred = riegel_predict(test_set["prior_time_seconds"], test_set["prior_distance_m"])
-riegel_mae = mean_absolute_error(y_test, riegel_pred)
-riegel_rmse = np.sqrt(mean_squared_error(y_test, riegel_pred))
+results.append(evaluate("Riegel formula", riegel_pred))
 
 # --- Linear Regression ---
-model = LinearRegression()
-model.fit(X_train, y_train)
-lr_pred = model.predict(X_test)
-lr_mae = mean_absolute_error(y_test, lr_pred)
-lr_rmse = np.sqrt(mean_squared_error(y_test, lr_pred))
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+results.append(evaluate("Linear Regression", lr.predict(X_test)))
+
+# --- XGBoost ---
+xgb = XGBRegressor(
+    n_estimators=300,
+    max_depth=4,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+)
+xgb.fit(X_train, y_train)
+results.append(evaluate("XGBoost", xgb.predict(X_test)))
 
 print(f"Train races: {len(X_train)}  Test races: {len(X_test)}")
 print(f"Train athletes: {dataset.iloc[train_idx]['athlete_id'].nunique()}  "
       f"Test athletes: {dataset.iloc[test_idx]['athlete_id'].nunique()}")
 print()
 print(f"{'Model':<20}{'MAE (s)':>10}{'RMSE (s)':>10}")
-print(f"{'Riegel formula':<20}{riegel_mae:>10.2f}{riegel_rmse:>10.2f}")
-print(f"{'Linear Regression':<20}{lr_mae:>10.2f}{lr_rmse:>10.2f}")
+for name, mae, rmse in results:
+    print(f"{name:<20}{mae:>10.2f}{rmse:>10.2f}")
 print()
-improvement = (riegel_mae - lr_mae) / riegel_mae * 100
-print(f"Linear Regression {'improves on' if improvement > 0 else 'underperforms'} "
-      f"Riegel by {abs(improvement):.1f}% (MAE)")
+
+riegel_mae = results[0][1]
+for name, mae, _ in results[1:]:
+    diff = (riegel_mae - mae) / riegel_mae * 100
+    verb = "improves on" if diff > 0 else "underperforms"
+    print(f"{name} {verb} Riegel by {abs(diff):.1f}% (MAE)")
+
 print()
-print("Learned coefficients:")
-for name, coef in zip(feature_cols, model.coef_):
+print("Linear Regression coefficients:")
+for name, coef in zip(feature_cols, lr.coef_):
     print(f"  {name:<20} {coef:.4f}")
-print(f"  {'intercept':<20} {model.intercept_:.4f}")
+print(f"  {'intercept':<20} {lr.intercept_:.4f}")
+
+print()
+print("XGBoost feature importances:")
+for name, imp in zip(feature_cols, xgb.feature_importances_):
+    print(f"  {name:<20} {imp:.4f}")
