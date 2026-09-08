@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GroupShuffleSplit
@@ -54,6 +55,28 @@ xgb = XGBRegressor(
 xgb.fit(X_train, y_train)
 results.append(evaluate("XGBoost", xgb.predict(X_test)))
 
+# --- Random Forest ---
+rf = RandomForestRegressor(
+    n_estimators=300,
+    max_depth=8,
+    min_samples_leaf=5,
+    random_state=42,
+    n_jobs=-1,
+)
+rf.fit(X_train, y_train)
+results.append(evaluate("Random Forest", rf.predict(X_test)))
+
+# --- Extra Trees ---
+et = ExtraTreesRegressor(
+    n_estimators=300,
+    max_depth=8,
+    min_samples_leaf=5,
+    random_state=42,
+    n_jobs=-1,
+)
+et.fit(X_train, y_train)
+results.append(evaluate("Extra Trees", et.predict(X_test)))
+
 print(f"Train races: {len(X_train)}  Test races: {len(X_test)}")
 print(f"Train athletes: {dataset.iloc[train_idx]['athlete_id'].nunique()}  "
       f"Test athletes: {dataset.iloc[test_idx]['athlete_id'].nunique()}")
@@ -78,4 +101,14 @@ print(f"  {'intercept':<20} {lr.intercept_:.4f}")
 print()
 print("XGBoost feature importances:")
 for name, imp in zip(feature_cols, xgb.feature_importances_):
+    print(f"  {name:<20} {imp:.4f}")
+
+print()
+print("Random Forest feature importances:")
+for name, imp in zip(feature_cols, rf.feature_importances_):
+    print(f"  {name:<20} {imp:.4f}")
+
+print()
+print("Extra Trees feature importances:")
+for name, imp in zip(feature_cols, et.feature_importances_):
     print(f"  {name:<20} {imp:.4f}")
