@@ -1,13 +1,14 @@
 import pandas as pd
 from prepare_data import load_clean_data
-
-TARGET_DISTANCE_M = 5000
+from features import TARGET_DISTANCE_M, compute_features, riegel_predict
 
 
 def build_prediction_dataset(df):
     """
-    One row per 5k race. Features come from the athlete's most recent
-    *prior* race (any distance), so nothing after the target race leaks in.
+    One row per 5k race. Features come from the athlete's races *prior* to
+    that race, so nothing after the target race leaks in. Uses the same
+    compute_features() that predict.py uses at inference time, so training
+    and serving can't drift apart.
     """
     rows = []
 
@@ -19,23 +20,30 @@ def build_prediction_dataset(df):
             prior = group[group["race_date"] < race["race_date"]]
             if prior.empty:
                 continue
-            last = prior.iloc[-1]
+
+            prior_races = [
+                {"date": r["race_date"], "distance_m": r["distance_m"], "time_seconds": r["time_seconds"]}
+                for _, r in prior.iterrows()
+            ]
+            feats = compute_features(
+                prior_races,
+                target_date=race["race_date"],
+                gender=race.get("gender"),
+                altitude=race.get("altitude"),
+                temperature=race.get("temperature"),
+                wind_speed=race.get("wind_speed"),
+                humidity=race.get("humidity"),
+            )
 
             rows.append({
                 "athlete_id": athlete_id,
                 "target_date": race["race_date"],
                 "target_time_seconds": race["time_seconds"],
-                "prior_time_seconds": last["time_seconds"],
-                "prior_distance_m": last["distance_m"],
-                "days_since_prior": (race["race_date"] - last["race_date"]).days,
                 "gender": race.get("gender"),
+                **feats,
             })
 
     return pd.DataFrame(rows)
-
-
-def riegel_predict(t1, d1, d2=TARGET_DISTANCE_M, exponent=1.06):
-    return t1 * (d2 / d1) ** exponent
 
 
 if __name__ == "__main__":

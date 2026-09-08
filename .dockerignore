@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+joined.csv
+prediction_dataset.csv
+build_dataset.py
+prepare_data.py
+train_models.py
+Goals.md
