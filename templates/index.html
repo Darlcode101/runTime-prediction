@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>5k Time Predictor</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 1.4rem; }
+    .race-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .race-row select, .race-row input { padding: 6px; font-size: 0.95rem; }
+    .race-row select { flex: 1.3; }
+    .race-row input[type="text"] { flex: 1; }
+    .race-row input[type="date"] { flex: 1.2; }
+    .race-row button { flex: 0; }
+    button { cursor: pointer; padding: 8px 14px; font-size: 0.95rem; }
+    #addRace { margin: 6px 0 16px; }
+    #submit { background: #2563eb; color: white; border: none; border-radius: 4px; }
+    fieldset { border: 1px solid #8884; border-radius: 6px; margin-bottom: 16px; }
+    #result { margin-top: 20px; padding: 16px; border-radius: 6px; background: #8882; display: none; }
+    #result .big { font-size: 1.6rem; font-weight: 600; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h1>5k Time Predictor</h1>
+  <p>Enter your recent race results and get a predicted 5k time, trained on real collegiate race data (XGBoost vs. the Riegel formula).</p>
+
+  <form id="predictForm">
+    <fieldset>
+      <legend>Recent races</legend>
+      <div id="races"></div>
+      <button type="button" id="addRace">+ Add race</button>
+    </fieldset>
+
+    <label>Gender:
+      <select name="gender">
+        <option value="">Prefer not to say</option>
+        <option value="M">Male</option>
+        <option value="F">Female</option>
+      </select>
+    </label>
+    <br><br>
+    <label>Target race date: <input type="date" name="target_date"></label>
+    <br><br>
+    <button type="submit" id="submit">Predict my 5k</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    const distances = {{ distances | tojson }};
+
+    function addRaceRow() {
+      const row = document.createElement("div");
+      row.className = "race-row";
+      row.innerHTML = `
+        <select name="distance[]">${distances.map(d => `<option value="${d}">${d}</option>`).join("")}</select>
+        <input type="text" name="time[]" placeholder="mm:ss" pattern="\\d+:\\d{2}" required>
+        <input type="date" name="date[]" required>
+        <button type="button" class="removeRace">&times;</button>
+      `;
+      row.querySelector(".removeRace").onclick = () => row.remove();
+      document.getElementById("races").appendChild(row);
+    }
+    document.getElementById("addRace").onclick = addRaceRow;
+    addRaceRow();
+    addRaceRow();
+
+    document.getElementById("predictForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const resultEl = document.getElementById("result");
+      resultEl.style.display = "block";
+      resultEl.innerHTML = "Predicting...";
+
+      const formData = new FormData(e.target);
+      const resp = await fetch("/predict", { method: "POST", body: formData });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        resultEl.innerHTML = `<span class="error">${data.error}</span>`;
+        return;
+      }
+
+      resultEl.innerHTML = `
+        <div class="big">Predicted 5k: ${data.predicted_time}</div>
+        <div>Riegel formula estimate (from most recent race): ${data.riegel_time}</div>
+      `;
+    });
+  </script>
+</body>
+</html>
