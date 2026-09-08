@@ -14,8 +14,24 @@ dataset["gender"] = dataset["gender"].fillna("U")
 dataset["gender_M"] = (dataset["gender"] == "M").astype(int)
 dataset["altitude"] = dataset["altitude"].fillna(dataset["altitude"].median())
 
+# trend features only exist when the athlete has a second prior race
+dataset["trend_5k_equiv"] = dataset["trend_5k_equiv"].fillna(0)
+dataset["days_between_last_two"] = dataset["days_between_last_two"].fillna(0)
+
+# weather is only recorded for ~46% of races (outdoor/tracked meets) -
+# impute with median and keep a missingness flag so models can use "unknown" as signal
+for col in ["temperature", "wind_speed", "humidity"]:
+    dataset[f"{col}_missing"] = dataset[col].isna().astype(int)
+    dataset[col] = dataset[col].fillna(dataset[col].median())
+
 BASE_FEATURES = ["prior_time_seconds", "prior_distance_m", "days_since_prior", "gender_M"]
 NEW_FEATURES = ["race_count_so_far", "prior_is_5k", "best_prior_5k_equiv", "altitude"]
+TREND_FEATURES = ["has_second_prior", "trend_5k_equiv", "days_between_last_two"]
+WEATHER_FEATURES = [
+    "temperature", "temperature_missing",
+    "wind_speed", "wind_speed_missing",
+    "humidity", "humidity_missing",
+]
 
 y = dataset["target_time_seconds"]
 
@@ -55,12 +71,16 @@ riegel_pred = riegel_predict(test_set["prior_time_seconds"], test_set["prior_dis
 riegel_mae = evaluate("Riegel formula", riegel_pred)[1]
 
 # --- Feature ablation: how much does each new feature help XGBoost? ---
+history_features = BASE_FEATURES + NEW_FEATURES
 feature_sets = {
     "base (prior time/dist/days/gender)": BASE_FEATURES,
     "+ race_count_so_far, prior_is_5k": BASE_FEATURES + ["race_count_so_far", "prior_is_5k"],
     "+ best_prior_5k_equiv": BASE_FEATURES + ["best_prior_5k_equiv"],
     "+ altitude": BASE_FEATURES + ["altitude"],
-    "all features": BASE_FEATURES + NEW_FEATURES,
+    "history features (prior work)": history_features,
+    "+ trend (2nd most recent race)": history_features + TREND_FEATURES,
+    "+ weather (temp/wind/humidity)": history_features + WEATHER_FEATURES,
+    "all features": history_features + TREND_FEATURES + WEATHER_FEATURES,
 }
 
 print("=== Feature ablation (XGBoost) ===")

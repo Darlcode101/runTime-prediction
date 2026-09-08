@@ -23,6 +23,17 @@ def build_prediction_dataset(df):
 
             prior_5k_equivs = riegel_predict(prior["time_seconds"], prior["distance_m"])
 
+            has_second_prior = len(prior) >= 2
+            second_last = prior.iloc[-2] if has_second_prior else None
+            if has_second_prior:
+                last_equiv = riegel_predict(last["time_seconds"], last["distance_m"])
+                second_equiv = riegel_predict(second_last["time_seconds"], second_last["distance_m"])
+                trend_5k_equiv = last_equiv - second_equiv
+                days_between_last_two = (last["race_date"] - second_last["race_date"]).days
+            else:
+                trend_5k_equiv = None
+                days_between_last_two = None
+
             rows.append({
                 "athlete_id": athlete_id,
                 "target_date": race["race_date"],
@@ -35,6 +46,12 @@ def build_prediction_dataset(df):
                 "prior_is_5k": int(last["distance_m"] == 5000),
                 "best_prior_5k_equiv": prior_5k_equivs.min(),
                 "altitude": race.get("altitude"),
+                "has_second_prior": int(has_second_prior),
+                "trend_5k_equiv": trend_5k_equiv,
+                "days_between_last_two": days_between_last_two,
+                "temperature": race.get("temperature"),
+                "wind_speed": race.get("wind_speed"),
+                "humidity": race.get("humidity"),
             })
 
     return pd.DataFrame(rows)
