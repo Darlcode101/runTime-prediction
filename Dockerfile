@@ -1,5 +1,11 @@
 FROM python:3.13-slim
 
+# Lets this container run as a Lambda function (behind a Function URL) with
+# zero code changes: it proxies Lambda invoke events to HTTP calls against
+# the app's normal web server. See https://github.com/awslabs/aws-lambda-web-adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter
+ENV AWS_LWA_READINESS_CHECK_PATH=/health
+
 WORKDIR /app
 
 COPY requirements.txt .

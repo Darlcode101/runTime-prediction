@@ -16,5 +16,12 @@ ok so for this project
 
 4. find the difference between my findings and normal to calculate increased accuracy 
 
-5. figure out how im gonna get this on AWS 
+5. figure out how im gonna get this on AWS
+
+   Deployed as a Lambda function (container image, arm64) behind a public
+   Function URL, via the AWS Lambda Web Adapter so the same Flask app runs
+   locally and on Lambda unmodified. See deploy.sh for the redeploy flow.
+   Function URL: https://pufcam4qxmpucbls56xfork4fm0bxurt.lambda-url.eu-central-1.on.aws/
+   (currently 403 - AWS restricts public Function URLs on new accounts until
+   verified, should clear on its own within ~24h)
 
