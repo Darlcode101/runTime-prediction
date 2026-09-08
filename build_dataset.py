@@ -21,6 +21,8 @@ def build_prediction_dataset(df):
                 continue
             last = prior.iloc[-1]
 
+            prior_5k_equivs = riegel_predict(prior["time_seconds"], prior["distance_m"])
+
             rows.append({
                 "athlete_id": athlete_id,
                 "target_date": race["race_date"],
@@ -29,6 +31,10 @@ def build_prediction_dataset(df):
                 "prior_distance_m": last["distance_m"],
                 "days_since_prior": (race["race_date"] - last["race_date"]).days,
                 "gender": race.get("gender"),
+                "race_count_so_far": len(prior),
+                "prior_is_5k": int(last["distance_m"] == 5000),
+                "best_prior_5k_equiv": prior_5k_equivs.min(),
+                "altitude": race.get("altitude"),
             })
 
     return pd.DataFrame(rows)
