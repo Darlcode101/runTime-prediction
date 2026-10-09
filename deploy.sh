@@ -19,7 +19,7 @@
 set -euo pipefail
 
 REGION="eu-central-1"
-ACCOUNT_ID="357021374993"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REPO="run-predictor"
 ECR_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO"
 
