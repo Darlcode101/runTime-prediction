@@ -1,6 +1,6 @@
 import pandas as pd
 from prepare_data import load_clean_data
-from features import TARGET_DISTANCE_M, compute_features, riegel_predict
+from features import compute_features, riegel_predict
 
 
 def build_prediction_dataset(df):

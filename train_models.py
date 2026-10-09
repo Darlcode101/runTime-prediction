@@ -6,7 +6,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GroupShuffleSplit
 from xgboost import XGBRegressor
 
-from build_dataset import riegel_predict
+from features import riegel_predict
 
 dataset = pd.read_csv("prediction_dataset.csv")
 
